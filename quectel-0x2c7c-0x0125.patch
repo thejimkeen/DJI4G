@@ -1,0 +1,53 @@
+diff --git a/cmd/dj4ghub-macos/main.go b/cmd/dj4ghub-macos/main.go
+index 06b9955..804810f 100644
+--- a/cmd/dj4ghub-macos/main.go
++++ b/cmd/dj4ghub-macos/main.go
+@@ -466,7 +466,7 @@ func discoverDJIUSBDevice() *usbDeviceStatus {
+ 	for _, block := range strings.Split(string(out), "\n\n") {
+ 		vendorID, okVendor := intProperty(block, "idVendor")
+ 		productID, okProduct := intProperty(block, "idProduct")
+-		if !okVendor || !okProduct || vendorID != 0x2ca3 {
++		if !okVendor || !okProduct || (vendorID != 0x2ca3 && vendorID != 0x2c7c) {
+ 			continue
+ 		}
+ 		if device == nil {
+diff --git a/cmd/dj4ghub-macos/usbat_darwin.go b/cmd/dj4ghub-macos/usbat_darwin.go
+index caead6f..5bf0c1c 100644
+--- a/cmd/dj4ghub-macos/usbat_darwin.go
++++ b/cmd/dj4ghub-macos/usbat_darwin.go
+@@ -19,8 +19,10 @@ import (
+ )
+ 
+ const (
+-	djiUSBVendorID  = 0x2ca3
+-	djiUSBProductID = 0x4006
++	djiUSBVendorID      = 0x2ca3
++	djiUSBProductID     = 0x4006
++	quectelUSBVendorID  = 0x2c7c
++	quectelUSBProductID = 0x0125
+ )
+ 
+ type usbAT struct {
+@@ -44,9 +46,12 @@ func openDJIUSBAT() (*usbAT, error) {
+ 		return nil, fmt.Errorf("libusb init: %s", usbErrorName(rc))
+ 	}
+ 	handle := C.libusb_open_device_with_vid_pid(ctx, djiUSBVendorID, djiUSBProductID)
++	if handle == nil {
++		handle = C.libusb_open_device_with_vid_pid(ctx, quectelUSBVendorID, quectelUSBProductID)
++	}
+ 	if handle == nil {
+ 		C.libusb_exit(ctx)
+-		return nil, errors.New("DJI USB AT device 2ca3:4006 not found")
++		return nil, errors.New("DJI/Quectel USB AT device not found")
+ 	}
+ 	candidates, err := usbATCandidates(handle)
+ 	if err != nil {
+@@ -295,7 +300,7 @@ func (u *usbAT) Description() string {
+ 	if u == nil {
+ 		return "USB AT"
+ 	}
+-	return fmt.Sprintf("USB AT · 2ca3:4006 interface %d out 0x%02x in 0x%02x",
++	return fmt.Sprintf("USB AT · interface %d out 0x%02x in 0x%02x",
+ 		u.iface, u.endpointOut, u.endpointIn)
+ }
+ 

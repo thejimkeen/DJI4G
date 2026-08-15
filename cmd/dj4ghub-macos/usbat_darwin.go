@@ -19,8 +19,10 @@ import (
 )
 
 const (
-	djiUSBVendorID  = 0x2ca3
-	djiUSBProductID = 0x4006
+	djiUSBVendorID      = 0x2ca3
+	djiUSBProductID     = 0x4006
+	quectelUSBVendorID  = 0x2c7c
+	quectelUSBProductID = 0x0125
 )
 
 type usbAT struct {
@@ -45,8 +47,11 @@ func openDJIUSBAT() (*usbAT, error) {
 	}
 	handle := C.libusb_open_device_with_vid_pid(ctx, djiUSBVendorID, djiUSBProductID)
 	if handle == nil {
+		handle = C.libusb_open_device_with_vid_pid(ctx, quectelUSBVendorID, quectelUSBProductID)
+	}
+	if handle == nil {
 		C.libusb_exit(ctx)
-		return nil, errors.New("DJI USB AT device 2ca3:4006 not found")
+		return nil, errors.New("DJI/Quectel USB AT device not found")
 	}
 	candidates, err := usbATCandidates(handle)
 	if err != nil {
@@ -295,7 +300,7 @@ func (u *usbAT) Description() string {
 	if u == nil {
 		return "USB AT"
 	}
-	return fmt.Sprintf("USB AT · 2ca3:4006 interface %d out 0x%02x in 0x%02x",
+	return fmt.Sprintf("USB AT · interface %d out 0x%02x in 0x%02x",
 		u.iface, u.endpointOut, u.endpointIn)
 }
 
